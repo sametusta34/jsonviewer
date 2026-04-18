@@ -13,9 +13,13 @@ import { ChevronUp, ChevronDown, ChevronsUpDown, Filter, X } from 'lucide-react'
 import { isNested, formatCellValue } from '../utils/jsonUtils'
 import NestedModal from './NestedModal'
 
+interface KeyValueRow {
+  key: string
+  value: unknown
+}
+
 interface Props {
-  rows: Record<string, unknown>[]
-  columns: string[]
+  rows: KeyValueRow[]
 }
 
 interface NestedState {
@@ -23,7 +27,7 @@ interface NestedState {
   data: unknown
 }
 
-export default function DataTable({ rows, columns }: Props) {
+export default function DataTable({ rows }: Props) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -34,24 +38,36 @@ export default function DataTable({ rows, columns }: Props) {
     setNested({ title, data })
   }, [])
 
-  const colDefs = useMemo<ColumnDef<Record<string, unknown>>[]>(
-    () =>
-      columns.map(col => ({
-        id: col,
-        accessorKey: col,
-        header: col,
+  const colDefs = useMemo<ColumnDef<KeyValueRow>[]>(
+    () => [
+      {
+        id: 'key',
+        accessorKey: 'key',
+        header: 'Key',
+        enableSorting: true,
+        enableColumnFilter: true,
+        cell: ({ getValue }) => {
+          const key = getValue() as string
+          return <span className="text-blue-300 font-mono text-sm">{key}</span>
+        },
+        size: 150,
+      },
+      {
+        id: 'value',
+        accessorKey: 'value',
+        header: 'Value',
         enableSorting: true,
         enableColumnFilter: true,
         cell: ({ getValue, row }) => {
           const val = getValue()
           if (isNested(val)) {
             const label = Array.isArray(val)
-              ? `[Array ${(val as unknown[]).length}]`
-              : `{${Object.keys(val as object).slice(0, 2).join(', ')}…}`
+              ? `Array[${(val as unknown[]).length}]`
+              : `Object`
             return (
               <button
                 className="nested-badge"
-                onClick={() => openNested(`[${row.index}].${col}`, val)}
+                onClick={() => openNested(`${row.original.key}`, val)}
               >
                 <Filter size={10} />
                 {label}
@@ -64,23 +80,24 @@ export default function DataTable({ rows, columns }: Props) {
             return <span className={val ? 'text-green-400' : 'text-red-400'}>{String(val)}</span>
           if (typeof val === 'number')
             return <span className="text-amber-400">{String(val)}</span>
-          return <span>{String(val)}</span>
+          return <span className="text-slate-200">{String(val)}</span>
         },
-        sortingFn: (a, b, colId) => {
-          const av = a.original[colId]
-          const bv = b.original[colId]
+        sortingFn: (a, b) => {
+          const av = a.original.value
+          const bv = b.original.value
           if (av == null && bv == null) return 0
           if (av == null) return 1
           if (bv == null) return -1
           if (typeof av === 'number' && typeof bv === 'number') return av - bv
           return String(av).localeCompare(String(bv))
         },
-        filterFn: (row, colId, filterValue) => {
-          const val = formatCellValue(row.original[colId])
+        filterFn: (row, _colId, filterValue) => {
+          const val = formatCellValue(row.original.value)
           return val.toLowerCase().includes(String(filterValue).toLowerCase())
         },
-      })),
-    [columns, openNested]
+      },
+    ],
+    [openNested]
   )
 
   const table = useReactTable({
@@ -94,8 +111,10 @@ export default function DataTable({ rows, columns }: Props) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     globalFilterFn: (row, _colId, filterValue) => {
-      return Object.values(row.original).some(v =>
-        formatCellValue(v).toLowerCase().includes(String(filterValue).toLowerCase())
+      const searchStr = String(filterValue).toLowerCase()
+      return (
+        row.original.key.toLowerCase().includes(searchStr) ||
+        formatCellValue(row.original.value).toLowerCase().includes(searchStr)
       )
     },
   })
@@ -144,7 +163,6 @@ export default function DataTable({ rows, columns }: Props) {
           {filteredCount !== rows.length
             ? `${filteredCount} / ${rows.length} satır`
             : `${rows.length} satır`}
-          {' · '}{columns.length} sütun
         </span>
       </div>
 
@@ -154,9 +172,8 @@ export default function DataTable({ rows, columns }: Props) {
           <thead>
             {table.getHeaderGroups().map(hg => (
               <tr key={hg.id}>
-                <th className="text-slate-600 text-center w-10">#</th>
                 {hg.headers.map(header => (
-                  <th key={header.id} style={{ minWidth: 100 }}>
+                  <th key={header.id} style={{ minWidth: header.id === 'key' ? 150 : 300 }}>
                     <div
                       className="flex items-center gap-1 cursor-pointer select-none"
                       onClick={header.column.getToggleSortingHandler()}
@@ -194,14 +211,13 @@ export default function DataTable({ rows, columns }: Props) {
           <tbody>
             {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 1} className="text-center text-slate-500 py-8">
+                <td colSpan={2} className="text-center text-slate-500 py-8">
                   Sonuç bulunamadı
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row, idx) => (
+              table.getRowModel().rows.map(row => (
                 <tr key={row.id}>
-                  <td className="text-slate-600 text-center text-xs">{idx + 1}</td>
                   {row.getVisibleCells().map(cell => (
                     <td key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import DataTable from './DataTable'
-import { normalizeToRows, collectColumns } from '../utils/jsonUtils'
+import { normalizeToRows } from '../utils/jsonUtils'
 
 interface Props {
   title: string
@@ -19,7 +19,6 @@ export default function NestedModal({ title, data, onClose }: Props) {
   }, [onClose])
 
   const rows = normalizeToRows(data)
-  const columns = collectColumns(rows)
 
   return (
     <div
@@ -33,7 +32,7 @@ export default function NestedModal({ title, data, onClose }: Props) {
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700 flex-shrink-0">
           <span className="text-sm font-semibold text-blue-400 font-mono truncate">{title}</span>
           <div className="flex-1" />
-          <span className="text-xs text-slate-500">{rows.length} satır · {columns.length} sütun</span>
+          <span className="text-xs text-slate-500">{rows.length} satır</span>
           <button
             onClick={onClose}
             className="ml-2 p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-white transition"
@@ -44,7 +43,7 @@ export default function NestedModal({ title, data, onClose }: Props) {
 
         {/* Table */}
         <div className="flex-1 overflow-auto">
-          <DataTable rows={rows} columns={columns} />
+          <DataTable rows={rows} />
         </div>
       </div>
     </div>

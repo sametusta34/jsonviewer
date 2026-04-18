@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { FileJson2, Download, FileSpreadsheet, FileText, ChevronRight, ChevronLeft, LayoutGrid } from 'lucide-react'
 import JsonEditor from './components/JsonEditor'
 import DataTable from './components/DataTable'
-import { parseJSON, normalizeToRows, collectColumns } from './utils/jsonUtils'
+import { parseJSON, normalizeToRows, formatCellValue } from './utils/jsonUtils'
 import { exportToCSV, exportToExcel } from './utils/exportUtils'
 
 const SAMPLE_JSON = `[
@@ -67,15 +67,15 @@ export default function App() {
     return normalizeToRows(parseResult.data)
   }, [parseResult])
 
-  const columns = useMemo(() => collectColumns(rows), [rows])
-
   const handleExportCSV = useCallback(() => {
-    exportToCSV(rows, columns)
-  }, [rows, columns])
+    const csvRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
+    exportToCSV(csvRows, ['key', 'value'])
+  }, [rows])
 
   const handleExportExcel = useCallback(() => {
-    exportToExcel(rows, columns)
-  }, [rows, columns])
+    const excelRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
+    exportToExcel(excelRows, ['key', 'value'])
+  }, [rows])
 
   // Drag split
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -157,7 +157,7 @@ export default function App() {
         {/* Stats */}
         {isValid && rows.length > 0 && (
           <span className="text-xs text-slate-500 ml-1">
-            {rows.length} satır · {columns.length} sütun
+            {rows.length} satır
           </span>
         )}
       </header>
@@ -213,7 +213,7 @@ export default function App() {
                 Gösterilecek veri yok
               </div>
             ) : (
-              <DataTable rows={rows} columns={columns} />
+              <DataTable rows={rows} />
             )}
           </div>
         )}

@@ -23,31 +23,29 @@ export function parseJSON(raw: string): ParseResult {
   }
 }
 
-/** Normalize any JSON value into an array of flat-ish row objects. */
-export function normalizeToRows(data: unknown): Record<string, unknown>[] {
+/** Convert JSON data to key-value pair rows for row-by-row display. */
+export function normalizeToRows(data: unknown): Array<{ key: string; value: unknown }> {
   if (Array.isArray(data)) {
-    return data.map((item, i) =>
-      typeof item === 'object' && item !== null
-        ? (item as Record<string, unknown>)
-        : { value: item, _index: i }
-    )
+    // For arrays, show each item as a separate row with index as key
+    return data.map((item, i) => ({
+      key: `[${i}]`,
+      value: item,
+    }))
   }
   if (typeof data === 'object' && data !== null) {
-    // Single object → one row
-    return [data as Record<string, unknown>]
+    // For objects, flatten to key-value rows
+    return Object.entries(data as Record<string, unknown>).map(([key, value]) => ({
+      key,
+      value,
+    }))
   }
-  return [{ value: data }]
+  // For primitives, show as single row
+  return [{ key: 'value', value: data }]
 }
 
-/** Collect all unique keys from an array of row objects (preserves insertion order). */
-export function collectColumns(rows: Record<string, unknown>[]): string[] {
-  const seen = new Set<string>()
-  for (const row of rows) {
-    for (const key of Object.keys(row)) {
-      seen.add(key)
-    }
-  }
-  return Array.from(seen)
+/** Get columns for key-value display. */
+export function collectColumns(): string[] {
+  return ['key', 'value']
 }
 
 /** Return true if value is a nested object or array that should be rendered as a popup button. */
