@@ -11,12 +11,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Clone main (with token)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} . --depth 1
-          git checkout main
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node 20
         run: |
@@ -34,11 +33,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Debug build output
-        run: |
-          ls -la
-          ls -la dist || true
-
       - name: Deploy dist to gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,6 +40,18 @@ jobs:
           git config user.email "bot@github.com"
           git config user.name "GitHub Bot"
 
+          # dist mevcut mu?
+          if [ ! -d "dist" ]; then
+            echo "HATA: dist/ bulunamadı. Build çalışmamış."
+              ls -la
+            exit 1
+          fi
+
+          # dist'i geçici yere al (aşağıda temizlik dist'i silmesin)
+          rm -rf /tmp/dist
+          mv dist /tmp/dist
+
+          # gh-pages branch hazırlığı
           git fetch origin gh-pages || true
           if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
             git checkout -B gh-pages origin/gh-pages
@@ -54,18 +60,14 @@ jobs:
             git rm -rf . || true
           fi
 
-          # gh-pages içeriğini temizle (main'e dokunmaz!)
+          # gh-pages içeriğini temizle
           find . -maxdepth 1 -mindepth 1 ! -name '.git' -exec rm -rf {} +
 
-          # dist kontrolü
-          if [ ! -d "dist" ]; then
-            echo "HATA: dist/ klasörü bulunamadı. 'npm run build' dist üretmiyor veya build başarısız."
-            echo "Çıktı için dizin içeriği:"
-            ls -la
-            exit 1
-          fi
-
+          # dist'i geri getir ve yayınla
+          mv /tmp/dist dist
           cp -r dist/. .
+          rm -rf dist
+
           touch .nojekyll
 
           git add -A
