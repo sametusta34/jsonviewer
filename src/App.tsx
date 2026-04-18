@@ -72,9 +72,9 @@ export default function App() {
     exportToCSV(csvRows, ['key', 'value'])
   }, [rows])
 
-  const handleExportExcel = useCallback(() => {
+  const handleExportExcel = useCallback(async () => {
     const excelRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
-    exportToExcel(excelRows, ['key', 'value'])
+    await exportToExcel(excelRows, ['key', 'value'])
   }, [rows])
 
   // Drag split

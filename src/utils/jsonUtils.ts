@@ -2,11 +2,31 @@ export type ParseResult =
   | { ok: true; data: unknown }
   | { ok: false; error: string; line?: number; col?: number }
 
+const MAX_NESTING_DEPTH = 100
+
+/** Validate nesting depth to prevent DoS attacks */
+function validateNestingDepth(obj: unknown, depth = 0): boolean {
+  if (depth > MAX_NESTING_DEPTH) return false
+  if (obj === null || typeof obj !== 'object') return true
+  if (Array.isArray(obj)) {
+    return obj.every(item => validateNestingDepth(item, depth + 1))
+  }
+  return Object.values(obj as Record<string, unknown>).every(
+    v => validateNestingDepth(v, depth + 1)
+  )
+}
+
 export function parseJSON(raw: string): ParseResult {
   const trimmed = raw.trim()
   if (!trimmed) return { ok: false, error: 'JSON boş olamaz.' }
   try {
     const data = JSON.parse(trimmed)
+
+    // Validate nesting depth
+    if (!validateNestingDepth(data)) {
+      return { ok: false, error: `JSON yapısı çok iç içe (max: ${MAX_NESTING_DEPTH} level)` }
+    }
+
     return { ok: true, data }
   } catch (e) {
     const msg = (e as SyntaxError).message

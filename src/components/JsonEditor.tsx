@@ -13,9 +13,19 @@ interface Props {
 export default function JsonEditor({ value, onChange, error, isValid }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`Dosya 10 MB'den büyük olamaz. Dosya boyutu: ${(file.size / 1024 / 1024).toFixed(2)} MB`)
+      e.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = ev => onChange(ev.target?.result as string)
     reader.readAsText(file)
@@ -26,6 +36,13 @@ export default function JsonEditor({ value, onChange, error, isValid }: Props) {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     if (!file) return
+
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      alert(`Dosya 10 MB'den büyük olamaz. Dosya boyutu: ${(file.size / 1024 / 1024).toFixed(2)} MB`)
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = ev => onChange(ev.target?.result as string)
     reader.readAsText(file)

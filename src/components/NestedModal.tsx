@@ -27,10 +27,10 @@ export default function NestedModal({ title, data, onClose }: Props) {
     exportToCSV(csvRows, ['key', 'value'], sanitizedTitle)
   }, [rows, title])
 
-  const handleExportExcel = useCallback(() => {
+  const handleExportExcel = useCallback(async () => {
     const excelRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
     const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').slice(0, 30)
-    exportToExcel(excelRows, ['key', 'value'], sanitizedTitle)
+    await exportToExcel(excelRows, ['key', 'value'], sanitizedTitle)
   }, [rows, title])
 
   return (
