@@ -10,13 +10,20 @@ Modern JSON viewer ve editor uygulaması. JSON verilerini tablo formatında gör
 - **Biçimlendir/Sıkıştır** — Toolbar butonları ile JSON'u düzenle
 
 ### 📊 Spreadsheet-Tarzı Grid
-- **Sütun sıralama** — Her sütun başlığını tıklayınca asc/desc sıralama
+- **Sütun sıralama** — Artan/azalan sıralama (⬆️⬇️ butonları)
+- **Gelişmiş sütun filtreleri** — 12 filter operasyonu:
+  - İçinde ara, Hariç tut
+  - Başında ara, Sonunda ara
+  - Eşit, Eşit değil
+  - Büyüktür, Küçüktür, Büyük eşit, Küçük eşit
+  - Boş, Boş değil
 - **Global arama** — Tüm veride ara
-- **Sütun filtreleri** — Her sütun için ayrı ayrı filtreleme
 - **Renk kodlaması** — Veri tipine göre renklendirilmiş görüntü
   - `number` → sarı
   - `boolean` → yeşil/kırmızı
   - `null` → gri italik
+- **Nested veri görünümü** — Colon format (key: value) veya Tablo görünümü seçeneği
+- **Tam ekran modu** — Popup'ları tam ekrana genişlet
 
 ### 📥 Input
 - **Yapıştırma** — Editöre doğrudan JSON yapıştır
