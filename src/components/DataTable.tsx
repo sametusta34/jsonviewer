@@ -10,7 +10,7 @@ import {
   type ColumnFiltersState,
 } from '@tanstack/react-table'
 import { ChevronUp, ChevronDown, ChevronsUpDown, Filter, X } from 'lucide-react'
-import { isNested, formatCellValue } from '../utils/jsonUtils'
+import { isNested, formatCellValue, formatValueWithColons } from '../utils/jsonUtils'
 import NestedModal from './NestedModal'
 
 interface KeyValueRow {
@@ -61,16 +61,15 @@ export default function DataTable({ rows }: Props) {
         cell: ({ getValue, row }) => {
           const val = getValue()
           if (isNested(val)) {
-            const label = Array.isArray(val)
-              ? `Array[${(val as unknown[]).length}]`
-              : `Object`
+            const formatted = formatValueWithColons(val)
             return (
               <button
-                className="nested-badge"
+                className="nested-badge group"
                 onClick={() => openNested(`${row.original.key}`, val)}
+                title="Tıklayarak aç"
               >
-                <Filter size={10} />
-                {label}
+                <Filter size={10} className="opacity-0 group-hover:opacity-100" />
+                <span className="font-mono text-xs truncate">{formatted}</span>
               </button>
             )
           }

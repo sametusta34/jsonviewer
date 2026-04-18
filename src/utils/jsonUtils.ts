@@ -83,3 +83,29 @@ export function formatCellValue(value: unknown): string {
   if (typeof value === 'object') return Array.isArray(value) ? `[Array ${(value as unknown[]).length}]` : `{Object}`
   return String(value)
 }
+
+export function formatValueWithColons(value: unknown, depth = 0): string {
+  if (value === null) return 'null'
+  if (value === undefined) return ''
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  if (typeof value === 'number') return String(value)
+  if (typeof value === 'string') return `"${value}"`
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '[]'
+    const items = value.slice(0, 5).map(v => formatValueWithColons(v, depth + 1)).join(', ')
+    const suffix = value.length > 5 ? `, ... (${value.length - 5} more)` : ''
+    return `[${items}${suffix}]`
+  }
+
+  if (typeof value === 'object' && value !== null) {
+    const obj = value as Record<string, unknown>
+    const keys = Object.keys(obj).slice(0, 5)
+    if (keys.length === 0) return '{}'
+    const pairs = keys.map(k => `${k}: ${formatValueWithColons(obj[k], depth + 1)}`).join(', ')
+    const suffix = Object.keys(obj).length > 5 ? `, ... (${Object.keys(obj).length - 5} more)` : ''
+    return `{${pairs}${suffix}}`
+  }
+
+  return String(value)
+}
