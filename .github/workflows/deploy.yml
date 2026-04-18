@@ -34,6 +34,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Debug build output
+        run: |
+          ls -la
+          ls -la dist || true
+
       - name: Deploy dist to gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,7 +57,15 @@ jobs:
           # gh-pages içeriğini temizle (main'e dokunmaz!)
           find . -maxdepth 1 -mindepth 1 ! -name '.git' -exec rm -rf {} +
 
-          cp -r dist/* .
+          # dist kontrolü
+          if [ ! -d "dist" ]; then
+            echo "HATA: dist/ klasörü bulunamadı. 'npm run build' dist üretmiyor veya build başarısız."
+            echo "Çıktı için dizin içeriği:"
+            ls -la
+            exit 1
+          fi
+
+          cp -r dist/. .
           touch .nojekyll
 
           git add -A
