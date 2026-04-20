@@ -1,5 +1,5 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
-import { X, Download, FileText, FileSpreadsheet, LayoutGrid, Code, Maximize2, Minimize2 } from 'lucide-react'
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react'
+import { X, Download, FileText, FileSpreadsheet, LayoutGrid, List, Maximize2, Minimize2 } from 'lucide-react'
 import DataTable from './DataTable'
 import ColonView from './ColonView'
 import { normalizeToRows, formatCellValue } from '../utils/jsonUtils'
@@ -13,9 +13,20 @@ interface Props {
   onClose: () => void
 }
 
+function detectBestView(data: unknown): ViewMode {
+  if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+    return 'colon'
+  }
+  if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+    return 'table'
+  }
+  return 'colon'
+}
+
 export default function NestedModal({ title, data, onClose }: Props) {
   const backdropRef = useRef<HTMLDivElement>(null)
-  const [viewMode, setViewMode] = useState<ViewMode>('colon')
+  const defaultView = useMemo(() => detectBestView(data), [data])
+  const [viewMode, setViewMode] = useState<ViewMode>(defaultView)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
   useEffect(() => {
@@ -54,17 +65,17 @@ export default function NestedModal({ title, data, onClose }: Props) {
             <div className="flex items-center gap-1 bg-slate-700 rounded p-0.5">
               <button
                 onClick={() => setViewMode('colon')}
-                title="Colon Format"
+                title="Sütun Görünümü"
                 className={`p-1 rounded transition text-xs ${viewMode === 'colon' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
               >
-                <Code size={13} />
+                <LayoutGrid size={13} />
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                title="Tablo Format"
+                title="Anahtar-Değer Listesi"
                 className={`p-1 rounded transition text-xs ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
               >
-                <LayoutGrid size={13} />
+                <List size={13} />
               </button>
             </div>
             <span className="text-xs text-slate-500">{rows.length} satır</span>

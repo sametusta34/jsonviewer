@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { FileJson2, Download, FileSpreadsheet, FileText, ChevronRight, ChevronLeft, LayoutGrid } from 'lucide-react'
 import JsonEditor from './components/JsonEditor'
 import DataTable from './components/DataTable'
+import ColonView from './components/ColonView'
 import { parseJSON, normalizeToRows, formatCellValue } from './utils/jsonUtils'
 import { exportToCSV, exportToExcel } from './utils/exportUtils'
 
@@ -212,9 +213,33 @@ export default function App() {
               <div className="flex items-center justify-center h-full text-slate-600 text-sm">
                 Gösterilecek veri yok
               </div>
-            ) : (
-              <DataTable rows={rows} />
-            )}
+            ) : (() => {
+              const isArrayOfObjects = Array.isArray(parseResult.data) &&
+                parseResult.data.length > 0 &&
+                typeof parseResult.data[0] === 'object' &&
+                parseResult.data[0] !== null &&
+                !Array.isArray(parseResult.data[0])
+
+              // Smart: if root is single object with one nested key, show that nested data
+              const isSingleNestedObject = !Array.isArray(parseResult.data) &&
+                typeof parseResult.data === 'object' &&
+                parseResult.data !== null &&
+                Object.keys(parseResult.data as Record<string, unknown>).length === 1 &&
+                typeof (parseResult.data as Record<string, unknown>)[Object.keys(parseResult.data as Record<string, unknown>)[0]] === 'object' &&
+                (parseResult.data as Record<string, unknown>)[Object.keys(parseResult.data as Record<string, unknown>)[0]] !== null
+
+              if (isSingleNestedObject) {
+                const key = Object.keys(parseResult.data as Record<string, unknown>)[0]
+                const nestedData = (parseResult.data as Record<string, unknown>)[key]
+                return <ColonView data={nestedData} />
+              }
+
+              return isArrayOfObjects ? (
+                <ColonView data={parseResult.data} />
+              ) : (
+                <DataTable rows={rows} />
+              )
+            })()}
           </div>
         )}
       </div>

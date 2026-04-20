@@ -9,7 +9,7 @@ import {
   type SortingState,
   type ColumnFiltersState,
 } from '@tanstack/react-table'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Filter, X } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Filter, X, Eye } from 'lucide-react'
 import { isNested, formatCellValue, formatValueWithColons } from '../utils/jsonUtils'
 import NestedModal from './NestedModal'
 
@@ -25,6 +25,16 @@ interface Props {
 interface NestedState {
   title: string
   data: unknown
+}
+
+function getNestedInfo(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.length}]`
+  }
+  if (typeof value === 'object' && value !== null) {
+    return `{${Object.keys(value).length}}`
+  }
+  return ''
 }
 
 export default function DataTable({ rows }: Props) {
@@ -61,15 +71,14 @@ export default function DataTable({ rows }: Props) {
         cell: ({ getValue, row }) => {
           const val = getValue()
           if (isNested(val)) {
-            const formatted = formatValueWithColons(val)
             return (
               <button
                 className="nested-badge group"
                 onClick={() => openNested(`${row.original.key}`, val)}
                 title="Tıklayarak aç"
               >
-                <Filter size={10} className="opacity-0 group-hover:opacity-100" />
-                <span className="font-mono text-xs truncate">{formatted}</span>
+                <Eye size={10} className="opacity-0 group-hover:opacity-100" />
+                <span className="font-mono text-xs truncate">{row.original.key} {getNestedInfo(val)}</span>
               </button>
             )
           }
