@@ -1,55 +1,50 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { FileJson2, Download, FileSpreadsheet, FileText, ChevronRight, ChevronLeft, LayoutGrid } from 'lucide-react'
+import { FileJson2, Download, FileSpreadsheet, FileText, ChevronRight, ChevronLeft, LayoutGrid, GitMerge } from 'lucide-react'
 import JsonEditor from './components/JsonEditor'
 import DataTable from './components/DataTable'
 import ColonView from './components/ColonView'
+import JoinPanel from './components/JoinPanel'
 import { parseJSON, normalizeToRows, formatCellValue } from './utils/jsonUtils'
 import { exportToCSV, exportToExcel } from './utils/exportUtils'
+import { isArrayOfObjects } from './utils/joinUtils'
 
-const SAMPLE_JSON = `[
-  {
-    "id": 1,
-    "name": "Alice Johnson",
-    "age": 30,
-    "active": true,
-    "score": 95.5,
-    "address": {
-      "city": "Istanbul",
-      "zip": "34000",
-      "country": "Turkey"
+const SAMPLE_JSON = `{
+  "departments": [
+    {
+      "id": 1,
+      "name": "Engineering",
+      "location": "Istanbul"
     },
-    "tags": ["admin", "editor"],
-    "metadata": null
-  },
-  {
-    "id": 2,
-    "name": "Bob Smith",
-    "age": 25,
-    "active": false,
-    "score": 78.2,
-    "address": {
-      "city": "Ankara",
-      "zip": "06000",
-      "country": "Turkey"
+    {
+      "id": 2,
+      "name": "Sales",
+      "location": "Ankara"
+    }
+  ],
+  "employees": [
+    {
+      "id": 1,
+      "name": "Alice Johnson",
+      "age": 30,
+      "departmentId": 1,
+      "salary": 95000
     },
-    "tags": ["viewer"],
-    "metadata": { "source": "import", "version": 2 }
-  },
-  {
-    "id": 3,
-    "name": "Carol White",
-    "age": 35,
-    "active": true,
-    "score": 88.0,
-    "address": {
-      "city": "Izmir",
-      "zip": "35000",
-      "country": "Turkey"
+    {
+      "id": 2,
+      "name": "Bob Smith",
+      "age": 25,
+      "departmentId": 1,
+      "salary": 78000
     },
-    "tags": ["editor", "viewer"],
-    "metadata": { "source": "manual", "version": 1 }
-  }
-]`
+    {
+      "id": 3,
+      "name": "Carol White",
+      "age": 35,
+      "departmentId": 2,
+      "salary": 88000
+    }
+  ]
+}`
 
 type PanelMode = 'both' | 'editor' | 'table'
 
@@ -57,11 +52,33 @@ export default function App() {
   const [raw, setRaw] = useState(SAMPLE_JSON)
   const [panelMode, setPanelMode] = useState<PanelMode>('both')
   const [splitPct, setSplitPct] = useState(35)
+  const [showJoinPanel, setShowJoinPanel] = useState(false)
+  const [selectedTableKey, setSelectedTableKey] = useState<string | null>(null)
   const dragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const parseResult = useMemo(() => parseJSON(raw), [raw])
   const isValid = parseResult.ok
+
+  const multiTableKeys = useMemo(() => {
+    if (!parseResult.ok || Array.isArray(parseResult.data) || typeof parseResult.data !== 'object' || parseResult.data === null) {
+      return []
+    }
+    const data = parseResult.data as Record<string, unknown>
+    return Object.keys(data).filter(k => {
+      const val = data[k]
+      return isArrayOfObjects(val)
+    })
+  }, [parseResult])
+
+  // Set selectedTableKey when multiTableKeys changes
+  useEffect(() => {
+    if (multiTableKeys.length > 0 && !selectedTableKey) {
+      setSelectedTableKey(multiTableKeys[0])
+    } else if (multiTableKeys.length === 0) {
+      setSelectedTableKey(null)
+    }
+  }, [multiTableKeys, selectedTableKey])
 
   const rows = useMemo(() => {
     if (!parseResult.ok) return []
@@ -135,6 +152,18 @@ export default function App() {
 
         <div className="flex-1" />
 
+        {/* Join button */}
+        {isValid && multiTableKeys.length >= 2 && (
+          <button
+            onClick={() => setShowJoinPanel(true)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-purple-800 hover:bg-purple-700 text-purple-200 transition"
+            title="İki tabloyu birleştir"
+          >
+            <GitMerge size={13} />
+            Birleştir
+          </button>
+        )}
+
         {/* Export buttons */}
         {isValid && rows.length > 0 && (
           <div className="flex items-center gap-2">
@@ -204,16 +233,41 @@ export default function App() {
             className="flex flex-col overflow-hidden flex-1"
             style={{ minWidth: 0 }}
           >
+            {/* Multi-table tab bar */}
+            {multiTableKeys.length > 0 && (
+              <div className="flex items-center gap-1 px-3 py-2 bg-slate-700 border-b border-slate-600 overflow-x-auto flex-shrink-0">
+                {multiTableKeys.map(key => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedTableKey(key)}
+                    className={`px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap transition ${
+                      selectedTableKey === key
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-600 text-slate-200 hover:bg-slate-500'
+                    }`}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {!isValid ? (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-600">
                 <FileJson2 size={48} strokeWidth={1} />
                 <p className="text-sm">Geçerli bir JSON girin</p>
               </div>
-            ) : rows.length === 0 ? (
+            ) : rows.length === 0 && multiTableKeys.length === 0 ? (
               <div className="flex items-center justify-center h-full text-slate-600 text-sm">
                 Gösterilecek veri yok
               </div>
             ) : (() => {
+              // If multi-table JSON, show selected table
+              if (multiTableKeys.length > 0 && selectedTableKey) {
+                const selectedData = (parseResult.data as Record<string, unknown>)[selectedTableKey]
+                return <ColonView data={selectedData} />
+              }
+
               const isArrayOfObjects = Array.isArray(parseResult.data) &&
                 parseResult.data.length > 0 &&
                 typeof parseResult.data[0] === 'object' &&
@@ -243,6 +297,14 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Join Panel Modal */}
+      {showJoinPanel && isValid && multiTableKeys.length >= 2 && (
+        <JoinPanel
+          tables={parseResult.data as Record<string, unknown>}
+          onClose={() => setShowJoinPanel(false)}
+        />
+      )}
     </div>
   )
 }

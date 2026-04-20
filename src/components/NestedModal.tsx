@@ -38,16 +38,44 @@ export default function NestedModal({ title, data, onClose }: Props) {
   const rows = normalizeToRows(data)
 
   const handleExportCSV = useCallback(() => {
-    const csvRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
     const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').slice(0, 30)
-    exportToCSV(csvRows, ['key', 'value'], sanitizedTitle)
-  }, [rows, title])
+
+    // Array of objects - export as columns
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      const columns = Object.keys(data[0] as Record<string, unknown>)
+      exportToCSV(data as Record<string, unknown>[], columns, sanitizedTitle)
+    }
+    // Single object - export as single row
+    else if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      const columns = Object.keys(data as Record<string, unknown>)
+      exportToCSV([data as Record<string, unknown>], columns, sanitizedTitle)
+    }
+    // Fallback - key-value format
+    else {
+      const csvRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
+      exportToCSV(csvRows, ['key', 'value'], sanitizedTitle)
+    }
+  }, [rows, title, data])
 
   const handleExportExcel = useCallback(async () => {
-    const excelRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
     const sanitizedTitle = title.replace(/[^a-z0-9]/gi, '_').slice(0, 30)
-    await exportToExcel(excelRows, ['key', 'value'], sanitizedTitle)
-  }, [rows, title])
+
+    // Array of objects - export as columns
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      const columns = Object.keys(data[0] as Record<string, unknown>)
+      await exportToExcel(data as Record<string, unknown>[], columns, sanitizedTitle)
+    }
+    // Single object - export as single row
+    else if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      const columns = Object.keys(data as Record<string, unknown>)
+      await exportToExcel([data as Record<string, unknown>], columns, sanitizedTitle)
+    }
+    // Fallback - key-value format
+    else {
+      const excelRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
+      await exportToExcel(excelRows, ['key', 'value'], sanitizedTitle)
+    }
+  }, [rows, title, data])
 
   return (
     <div
@@ -112,7 +140,7 @@ export default function NestedModal({ title, data, onClose }: Props) {
         {/* Content */}
         <div className="flex-1 overflow-auto">
           {viewMode === 'colon' ? (
-            <ColonView data={data} />
+            <ColonView data={data} hideExport={true} />
           ) : (
             <DataTable rows={rows} />
           )}

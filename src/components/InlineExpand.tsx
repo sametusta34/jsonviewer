@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { ChevronRight, ChevronDown, Eye } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { ChevronRight, ChevronDown, Eye, Download, FileText } from 'lucide-react'
 import { isNested, formatValueWithColons } from '../utils/jsonUtils'
+import { exportToCSV, exportToExcel } from '../utils/exportUtils'
 
 interface Props {
   data: unknown
@@ -20,6 +21,26 @@ function getNestedInfo(value: unknown): string {
 
 export default function InlineExpand({ data, depth = 0, onOpenModal }: Props) {
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+
+  const handleExportCSV = useCallback(() => {
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      const columns = Object.keys(data[0] as Record<string, unknown>)
+      exportToCSV(data as Record<string, unknown>[], columns, 'export.csv')
+    } else if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      const columns = Object.keys(data as Record<string, unknown>)
+      exportToCSV([data as Record<string, unknown>], columns, 'export.csv')
+    }
+  }, [data])
+
+  const handleExportExcel = useCallback(async () => {
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      const columns = Object.keys(data[0] as Record<string, unknown>)
+      await exportToExcel(data as Record<string, unknown>[], columns, 'export.xlsx')
+    } else if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      const columns = Object.keys(data as Record<string, unknown>)
+      await exportToExcel([data as Record<string, unknown>], columns, 'export.xlsx')
+    }
+  }, [data])
 
   const toggleExpand = (key: string) => {
     setExpandedKeys(prev => {
@@ -100,6 +121,23 @@ export default function InlineExpand({ data, depth = 0, onOpenModal }: Props) {
               title="Tüm nested verileri kapat"
             >
               Kapat
+            </button>
+            <div className="flex-1" />
+            <button
+              onClick={handleExportCSV}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-700/80 hover:bg-emerald-700 text-emerald-200 transition flex items-center gap-0.5"
+              title="CSV indir"
+            >
+              <FileText size={10} />
+              CSV
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-green-700/80 hover:bg-green-700 text-green-200 transition flex items-center gap-0.5"
+              title="Excel indir"
+            >
+              <Download size={10} />
+              XL
             </button>
           </div>
         )}
@@ -202,6 +240,23 @@ export default function InlineExpand({ data, depth = 0, onOpenModal }: Props) {
               title="Tüm nested verileri kapat"
             >
               Kapat
+            </button>
+            <div className="flex-1" />
+            <button
+              onClick={handleExportCSV}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-700/80 hover:bg-emerald-700 text-emerald-200 transition flex items-center gap-0.5"
+              title="CSV indir"
+            >
+              <FileText size={10} />
+              CSV
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-green-700/80 hover:bg-green-700 text-green-200 transition flex items-center gap-0.5"
+              title="Excel indir"
+            >
+              <Download size={10} />
+              XL
             </button>
           </div>
         )}

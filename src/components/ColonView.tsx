@@ -1,11 +1,13 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { formatValueWithColons, isNested, formatCellValue } from '../utils/jsonUtils'
-import { X, Filter, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, Columns2, Eye } from 'lucide-react'
+import { X, Filter, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, Columns2, Eye, Download, FileText } from 'lucide-react'
 import InlineExpand from './InlineExpand'
 import NestedModal from './NestedModal'
+import { exportToCSV, exportToExcel } from '../utils/exportUtils'
 
 interface ColonViewProps {
   data: unknown
+  hideExport?: boolean
 }
 
 interface NestedState {
@@ -50,7 +52,7 @@ const FILTER_OPS: { label: string; op: FilterOp }[] = [
   { label: 'Boş değil', op: 'isNotEmpty' },
 ]
 
-export default function ColonView({ data }: ColonViewProps) {
+export default function ColonView({ data, hideExport = false }: ColonViewProps) {
   // All hooks MUST be called unconditionally at the top
   const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilter>>({})
   const [sort, setSort] = useState<SortState | null>(null)
@@ -68,6 +70,34 @@ export default function ColonView({ data }: ColonViewProps) {
   const filterButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const columnPanelRef = useRef<HTMLDivElement>(null)
   const columnPanelButtonRef = useRef<HTMLButtonElement | null>(null)
+
+  const handleExportCSV = () => {
+    if (!data) return
+
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      // Array of objects
+      const columns = Object.keys(data[0] as Record<string, unknown>)
+      exportToCSV(data as Record<string, unknown>[], columns, 'export.csv')
+    } else if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      // Single object
+      const columns = Object.keys(data as Record<string, unknown>)
+      exportToCSV([data as Record<string, unknown>], columns, 'export.csv')
+    }
+  }
+
+  const handleExportExcel = async () => {
+    if (!data) return
+
+    if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && data[0] !== null) {
+      // Array of objects
+      const columns = Object.keys(data[0] as Record<string, unknown>)
+      await exportToExcel(data as Record<string, unknown>[], columns, 'export.xlsx')
+    } else if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+      // Single object
+      const columns = Object.keys(data as Record<string, unknown>)
+      await exportToExcel([data as Record<string, unknown>], columns, 'export.xlsx')
+    }
+  }
 
   const toggleExpand = (cellId: string) => {
     setExpandedCells(prev => {
@@ -284,6 +314,25 @@ export default function ColonView({ data }: ColonViewProps) {
               Tümünü Kapat
             </button>
           </div>
+          <div className="flex-1" />
+          {!hideExport && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-emerald-800 hover:bg-emerald-700 text-emerald-200 transition"
+              >
+                <FileText size={13} />
+                CSV
+              </button>
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-green-800 hover:bg-green-700 text-green-200 transition"
+              >
+                <Download size={13} />
+                Excel
+              </button>
+            </div>
+          )}
           {showColumnPanel && (
             <div
               ref={columnPanelRef}
@@ -597,6 +646,25 @@ export default function ColonView({ data }: ColonViewProps) {
     const entries = Object.entries(obj)
     return (
       <>
+      {!hideExport && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 border-b border-slate-700 flex-shrink-0">
+          <div className="flex-1" />
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-emerald-800 hover:bg-emerald-700 text-emerald-200 transition"
+          >
+            <FileText size={13} />
+            CSV
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-green-800 hover:bg-green-700 text-green-200 transition"
+          >
+            <Download size={13} />
+            Excel
+          </button>
+        </div>
+      )}
       <table className="w-full border-collapse">
         <thead className="sticky top-0 bg-slate-800 border-b border-slate-600">
           <tr>
