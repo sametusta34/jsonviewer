@@ -109,3 +109,42 @@ export function formatValueWithColons(value: unknown, depth = 0): string {
 
   return String(value)
 }
+
+export interface ColumnStats {
+  column: string
+  min: number | null
+  max: number | null
+  sum: number
+  avg: number | null
+  count: number
+}
+
+export function calculateColumnStats(items: unknown[], column: string): ColumnStats | null {
+  const numbers: number[] = []
+
+  items.forEach(item => {
+    if (typeof item === 'object' && item !== null) {
+      const value = (item as Record<string, unknown>)[column]
+      const num = typeof value === 'number' ? value : (typeof value === 'string' ? parseFloat(value) : null)
+      if (num !== null && !isNaN(num)) {
+        numbers.push(num)
+      }
+    }
+  })
+
+  if (numbers.length === 0) return null
+
+  const sum = numbers.reduce((a, b) => a + b, 0)
+  const min = Math.min(...numbers)
+  const max = Math.max(...numbers)
+  const avg = sum / numbers.length
+
+  return {
+    column,
+    min,
+    max,
+    sum,
+    avg,
+    count: numbers.length
+  }
+}

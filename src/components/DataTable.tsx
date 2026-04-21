@@ -9,7 +9,7 @@ import {
   type SortingState,
   type ColumnFiltersState,
 } from '@tanstack/react-table'
-import { ChevronUp, ChevronDown, ChevronsUpDown, Filter, X, Eye } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronsUpDown, Filter, X, Eye, Calculator } from 'lucide-react'
 import { isNested, formatCellValue, formatValueWithColons } from '../utils/jsonUtils'
 import NestedModal from './NestedModal'
 
@@ -43,6 +43,7 @@ export default function DataTable({ rows }: Props) {
   const [globalFilter, setGlobalFilter] = useState('')
   const [nested, setNested] = useState<NestedState | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [showStats, setShowStats] = useState(false)
 
   const openNested = useCallback((title: string, data: unknown) => {
     setNested({ title, data })
@@ -129,6 +130,26 @@ export default function DataTable({ rows }: Props) {
 
   const filteredCount = table.getFilteredRowModel().rows.length
 
+  const valueStats = useMemo(() => {
+    const numbers: number[] = []
+    table.getFilteredRowModel().rows.forEach(row => {
+      const val = row.original.value
+      const num = typeof val === 'number' ? val : (typeof val === 'string' ? parseFloat(val) : null)
+      if (num !== null && !isNaN(num)) {
+        numbers.push(num)
+      }
+    })
+
+    if (numbers.length === 0) return null
+
+    const sum = numbers.reduce((a, b) => a + b, 0)
+    const min = Math.min(...numbers)
+    const max = Math.max(...numbers)
+    const avg = sum / numbers.length
+
+    return { min, max, sum, avg, count: numbers.length }
+  }, [table.getFilteredRowModel().rows])
+
   return (
     <div className="flex flex-col h-full">
       {/* Table toolbar */}
@@ -163,6 +184,17 @@ export default function DataTable({ rows }: Props) {
             className="text-xs px-2 py-1.5 rounded bg-red-900/50 hover:bg-red-900 text-red-300 flex items-center gap-1 transition"
           >
             <X size={11} /> Filtreleri Temizle
+          </button>
+        )}
+
+        {valueStats && (
+          <button
+            onClick={() => setShowStats(!showStats)}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-purple-800 hover:bg-purple-700 text-purple-200 transition"
+            title="İstatistikler"
+          >
+            <Calculator size={13} />
+            İstatistikler
           </button>
         )}
 
@@ -237,6 +269,47 @@ export default function DataTable({ rows }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Statistics modal */}
+      {showStats && valueStats && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-lg shadow-2xl max-w-2xl w-full border border-slate-700">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700">
+              <Calculator size={20} className="text-purple-400" />
+              <span className="text-lg font-semibold text-slate-200">İstatistikler</span>
+              <button
+                onClick={() => setShowStats(false)}
+                className="ml-auto p-1 text-slate-400 hover:text-slate-200 transition rounded hover:bg-slate-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="bg-slate-900/60 rounded-lg p-6 border border-slate-600">
+                <div className="font-bold text-slate-100 mb-4 text-base border-b border-slate-700 pb-2">Değer Sütunu</div>
+                <div className="grid grid-cols-2 gap-6 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Minimum:</span>
+                    <span className="text-slate-100 font-mono text-lg">{valueStats.min.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Maximum:</span>
+                    <span className="text-slate-100 font-mono text-lg">{valueStats.max.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Toplam:</span>
+                    <span className="text-slate-100 font-mono text-lg">{valueStats.sum.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+                    <span className="text-slate-400 font-semibold">Ortalama:</span>
+                    <span className="text-amber-400 font-mono text-lg font-bold">{valueStats.avg.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Nested modal */}
       {nested && (

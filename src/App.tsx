@@ -234,21 +234,25 @@ export default function App() {
             style={{ minWidth: 0 }}
           >
             {/* Multi-table tab bar */}
-            {multiTableKeys.length > 0 && (
+            {multiTableKeys.length > 0 && isValid && (
               <div className="flex items-center gap-1 px-3 py-2 bg-slate-700 border-b border-slate-600 overflow-x-auto flex-shrink-0">
-                {multiTableKeys.map(key => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedTableKey(key)}
-                    className={`px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap transition ${
-                      selectedTableKey === key
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-600 text-slate-200 hover:bg-slate-500'
-                    }`}
-                  >
-                    {key}
-                  </button>
-                ))}
+                {multiTableKeys.map(key => {
+                  const tableData = parseResult.ok ? (parseResult.data as Record<string, unknown>)[key] : null
+                  const count = Array.isArray(tableData) ? tableData.length : 0
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSelectedTableKey(key)}
+                      className={`px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap transition ${
+                        selectedTableKey === key
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-600 text-slate-200 hover:bg-slate-500'
+                      }`}
+                    >
+                      {key} <span className={selectedTableKey === key ? 'text-blue-200' : 'text-slate-400'}>({count})</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
 
@@ -262,10 +266,12 @@ export default function App() {
                 Gösterilecek veri yok
               </div>
             ) : (() => {
+              if (!parseResult.ok) return <div className="flex items-center justify-center h-full text-slate-600">Veri yüklenemedii</div>
+
               // If multi-table JSON, show selected table
               if (multiTableKeys.length > 0 && selectedTableKey) {
                 const selectedData = (parseResult.data as Record<string, unknown>)[selectedTableKey]
-                return <ColonView data={selectedData} />
+                return <ColonView data={selectedData} title={selectedTableKey} />
               }
 
               const isArrayOfObjects = Array.isArray(parseResult.data) &&
@@ -285,7 +291,7 @@ export default function App() {
               if (isSingleNestedObject) {
                 const key = Object.keys(parseResult.data as Record<string, unknown>)[0]
                 const nestedData = (parseResult.data as Record<string, unknown>)[key]
-                return <ColonView data={nestedData} />
+                return <ColonView data={nestedData} title={key} />
               }
 
               return isArrayOfObjects ? (
@@ -299,7 +305,7 @@ export default function App() {
       </div>
 
       {/* Join Panel Modal */}
-      {showJoinPanel && isValid && multiTableKeys.length >= 2 && (
+      {showJoinPanel && isValid && multiTableKeys.length >= 2 && parseResult.ok && (
         <JoinPanel
           tables={parseResult.data as Record<string, unknown>}
           onClose={() => setShowJoinPanel(false)}

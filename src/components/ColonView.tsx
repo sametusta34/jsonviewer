@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { formatValueWithColons, isNested, formatCellValue } from '../utils/jsonUtils'
-import { X, Filter, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, Columns2, Eye, Download, FileText } from 'lucide-react'
+import { formatValueWithColons, isNested, formatCellValue, calculateColumnStats, ColumnStats } from '../utils/jsonUtils'
+import { X, Filter, ChevronUp, ChevronDown, ChevronsUpDown, ChevronRight, Columns2, Eye, Download, FileText, Calculator, ChevronUp as ChevronUpIcon } from 'lucide-react'
 import InlineExpand from './InlineExpand'
 import NestedModal from './NestedModal'
 import { exportToCSV, exportToExcel } from '../utils/exportUtils'
@@ -8,6 +8,7 @@ import { exportToCSV, exportToExcel } from '../utils/exportUtils'
 interface ColonViewProps {
   data: unknown
   hideExport?: boolean
+  title?: string
 }
 
 interface NestedState {
@@ -52,7 +53,7 @@ const FILTER_OPS: { label: string; op: FilterOp }[] = [
   { label: 'Boş değil', op: 'isNotEmpty' },
 ]
 
-export default function ColonView({ data, hideExport = false }: ColonViewProps) {
+export default function ColonView({ data, hideExport = false, title }: ColonViewProps) {
   // All hooks MUST be called unconditionally at the top
   const [columnFilters, setColumnFilters] = useState<Record<string, ColumnFilter>>({})
   const [sort, setSort] = useState<SortState | null>(null)
@@ -66,6 +67,7 @@ export default function ColonView({ data, hideExport = false }: ColonViewProps) 
   const [dragKey, setDragKey] = useState<string | null>(null)
   const [dragOverKey, setDragOverKey] = useState<string | null>(null)
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set())
+  const [showStats, setShowStats] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
   const filterButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const columnPanelRef = useRef<HTMLDivElement>(null)
@@ -269,6 +271,16 @@ export default function ColonView({ data, hideExport = false }: ColonViewProps) 
     return sorted
   }, [filteredItems, sort, isArrayOfObjects])
 
+  const columnStats = useMemo(() => {
+    if (!isArrayOfObjects) return []
+    const stats: ColumnStats[] = []
+    visibleKeys.forEach(key => {
+      const stat = calculateColumnStats(sortedItems, key)
+      if (stat) stats.push(stat)
+    })
+    return stats
+  }, [sortedItems, visibleKeys, isArrayOfObjects])
+
   const hasActiveFilters = Object.keys(columnFilters).length > 0
 
   useEffect(() => {
@@ -315,6 +327,16 @@ export default function ColonView({ data, hideExport = false }: ColonViewProps) 
             </button>
           </div>
           <div className="flex-1" />
+          {columnStats.length > 0 && (
+            <button
+              onClick={() => setShowStats(!showStats)}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-purple-800 hover:bg-purple-700 text-purple-200 transition"
+              title="İstatistikler"
+            >
+              <Calculator size={13} />
+              İstatistikler
+            </button>
+          )}
           {!hideExport && (
             <div className="flex items-center gap-2">
               <button
@@ -500,7 +522,7 @@ export default function ColonView({ data, hideExport = false }: ColonViewProps) 
                               <button
                                 className="nested-badge group"
                                 onClick={() => toggleExpand(cellId)}
-                                title="Tıklayarak aç"
+                                title={`${key} ${getNestedInfo(value)} - Tıklayarak aç`}
                               >
                                 {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
                                 <span className="font-mono text-xs truncate text-slate-200">{key} {getNestedInfo(value)}</span>
@@ -541,6 +563,51 @@ export default function ColonView({ data, hideExport = false }: ColonViewProps) 
             </tbody>
           </table>
         </div>
+
+        {/* Statistics modal */}
+        {showStats && columnStats.length > 0 && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-auto border border-slate-700">
+              <div className="sticky top-0 bg-slate-800 flex items-center gap-3 px-6 py-4 border-b border-slate-700">
+                <Calculator size={20} className="text-purple-400" />
+                <span className="text-lg font-semibold text-slate-200">İstatistikler</span>
+                <button
+                  onClick={() => setShowStats(false)}
+                  className="ml-auto p-1 text-slate-400 hover:text-slate-200 transition rounded hover:bg-slate-700"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {columnStats.map(stat => (
+                    <div key={stat.column} className="bg-slate-900/60 rounded-lg p-5 border border-slate-600 hover:border-slate-500 transition">
+                      <div className="font-bold text-slate-100 mb-4 text-base border-b border-slate-700 pb-2">{stat.column}</div>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Minimum:</span>
+                          <span className="text-slate-100 font-mono text-base">{stat.min?.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Maximum:</span>
+                          <span className="text-slate-100 font-mono text-base">{stat.max?.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Toplam:</span>
+                          <span className="text-slate-100 font-mono text-base">{stat.sum.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t border-slate-700">
+                          <span className="text-slate-400 font-semibold">Ortalama:</span>
+                          <span className="text-amber-400 font-mono text-base font-bold">{stat.avg?.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Fixed filter dropdown */}
         {activeFilterColumn && (
@@ -646,6 +713,11 @@ export default function ColonView({ data, hideExport = false }: ColonViewProps) 
     const entries = Object.entries(obj)
     return (
       <>
+      {title && (
+        <div className="px-3 py-2 bg-slate-800 border-b border-slate-700 flex-shrink-0">
+          <h2 className="text-sm font-semibold text-slate-200">{title} <span className="text-slate-400">({Object.keys(obj).length})</span></h2>
+        </div>
+      )}
       {!hideExport && (
         <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 border-b border-slate-700 flex-shrink-0">
           <div className="flex-1" />
@@ -684,14 +756,14 @@ export default function ColonView({ data, hideExport = false }: ColonViewProps) 
                       <button
                         onClick={() => toggleExpand(key)}
                         className="text-blue-400 hover:text-blue-300 transition p-0.5"
-                        title="İçe aç"
+                        title={`${key} ${getNestedInfo(value)} - İçe aç`}
                       >
                         {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
                       </button>
                       <button
                         onClick={() => setNested({ title: key, data: value })}
                         className="text-blue-400 hover:text-blue-300 transition p-0.5"
-                        title="Popup'ta aç"
+                        title={`${key} ${getNestedInfo(value)} - Popup'ta aç`}
                       >
                         <Eye size={10} />
                       </button>
