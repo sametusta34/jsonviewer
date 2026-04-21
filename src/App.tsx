@@ -1,12 +1,21 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { FileJson2, Download, FileSpreadsheet, FileText, ChevronRight, ChevronLeft, LayoutGrid, GitMerge } from 'lucide-react'
+import { FileJson2, Download, FileSpreadsheet, FileText, ChevronRight, ChevronLeft, LayoutGrid, GitMerge, Share2 } from 'lucide-react'
 import JsonEditor from './components/JsonEditor'
 import DataTable from './components/DataTable'
 import ColonView from './components/ColonView'
 import JoinPanel from './components/JoinPanel'
+import DiagramView from './components/DiagramView'
 import { parseJSON, normalizeToRows, formatCellValue } from './utils/jsonUtils'
 import { exportToCSV, exportToExcel } from './utils/exportUtils'
 import { isArrayOfObjects } from './utils/joinUtils'
+
+export interface Relationship {
+  id: string
+  fromTable: string
+  fromCol: string
+  toTable: string
+  toCol: string
+}
 
 const SAMPLE_JSON = `{
   "departments": [
@@ -46,7 +55,7 @@ const SAMPLE_JSON = `{
   ]
 }`
 
-type PanelMode = 'both' | 'editor' | 'table'
+type PanelMode = 'both' | 'editor' | 'table' | 'diagram'
 
 export default function App() {
   const [raw, setRaw] = useState(SAMPLE_JSON)
@@ -54,6 +63,7 @@ export default function App() {
   const [splitPct, setSplitPct] = useState(35)
   const [showJoinPanel, setShowJoinPanel] = useState(false)
   const [selectedTableKey, setSelectedTableKey] = useState<string | null>(null)
+  const [relationships, setRelationships] = useState<Relationship[]>([])
   const dragging = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -94,6 +104,44 @@ export default function App() {
     const excelRows = rows.map(r => ({ key: r.key, value: formatCellValue(r.value) }))
     await exportToExcel(excelRows, ['key', 'value'])
   }, [rows])
+
+  const handleAddRelationship = useCallback((rel: Omit<Relationship, 'id'>) => {
+    const id = `${rel.fromTable}.${rel.fromCol}->${rel.toTable}.${rel.toCol}`
+    setRelationships(prev =>
+      prev.some(r => r.id === id) ? prev : [...prev, { ...rel, id }]
+    )
+  }, [])
+
+  const handleRemoveRelationship = useCallback((id: string) => {
+    setRelationships(prev => prev.filter(r => r.id !== id))
+  }, [])
+
+  // Cleanup stale relationships when JSON changes
+  useEffect(() => {
+    if (!parseResult.ok) {
+      setRelationships([])
+      return
+    }
+    const data = parseResult.data as Record<string, unknown>
+    setRelationships(prev =>
+      prev.filter(rel => {
+        const fromData = data[rel.fromTable]
+        const toData = data[rel.toTable]
+        const fromCols = Array.isArray(fromData) && fromData.length > 0 && typeof fromData[0] === 'object' && fromData[0] !== null
+          ? Object.keys(fromData[0] as Record<string, unknown>)
+          : []
+        const toCols = Array.isArray(toData) && toData.length > 0 && typeof toData[0] === 'object' && toData[0] !== null
+          ? Object.keys(toData[0] as Record<string, unknown>)
+          : []
+        return (
+          multiTableKeys.includes(rel.fromTable) &&
+          multiTableKeys.includes(rel.toTable) &&
+          fromCols.includes(rel.fromCol) &&
+          toCols.includes(rel.toCol)
+        )
+      })
+    )
+  }, [multiTableKeys, parseResult])
 
   // Drag split
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -147,6 +195,13 @@ export default function App() {
             className={`p-1.5 rounded transition text-xs ${panelMode === 'table' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
           >
             <FileSpreadsheet size={14} />
+          </button>
+          <button
+            onClick={() => setPanelMode('diagram')}
+            title="Veritabanı Diyagramı"
+            className={`p-1.5 rounded transition text-xs ${panelMode === 'diagram' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          >
+            <Share2 size={14} />
           </button>
         </div>
 
@@ -300,6 +355,26 @@ export default function App() {
                 <DataTable rows={rows} />
               )
             })()}
+          </div>
+        )}
+
+        {/* Diagram panel */}
+        {panelMode === 'diagram' && isValid && multiTableKeys.length > 0 && parseResult.ok && (
+          <div className="flex-1 overflow-hidden">
+            <DiagramView
+              tables={parseResult.data as Record<string, unknown>}
+              multiTableKeys={multiTableKeys}
+              relationships={relationships}
+              onAddRelationship={handleAddRelationship}
+              onRemoveRelationship={handleRemoveRelationship}
+            />
+          </div>
+        )}
+
+        {panelMode === 'diagram' && (!isValid || multiTableKeys.length === 0) && (
+          <div className="flex flex-col items-center justify-center flex-1 gap-3 text-slate-600">
+            <Share2 size={48} strokeWidth={1} />
+            <p className="text-sm">Diyagram için birden fazla tablo içeren geçerli bir JSON girin</p>
           </div>
         )}
       </div>
