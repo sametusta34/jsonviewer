@@ -283,6 +283,14 @@ export default function ColonView({ data, hideExport = false, title }: ColonView
 
   const hasActiveFilters = Object.keys(columnFilters).length > 0
 
+  const tableWidth = useMemo(() => {
+    let total = 0
+    visibleKeys.forEach(key => {
+      total += columnWidths[key] ?? 140
+    })
+    return Math.max(total, 100)
+  }, [columnWidths, visibleKeys])
+
   useEffect(() => {
     if (!showColumnPanel) return
     const closeOnClick = (e: MouseEvent) => {
@@ -423,8 +431,8 @@ export default function ColonView({ data, hideExport = false, title }: ColonView
         )}
 
         {/* Table */}
-        <div className="overflow-auto flex-1">
-          <table className="w-full border-collapse">
+        <div className="overflow-auto flex-1 pb-4">
+          <table className="border-collapse" style={{ width: `${tableWidth}px` }}>
             <thead className="sticky top-0 bg-slate-800 border-b border-slate-600">
               <tr>
                 {visibleKeys.map(key => (
@@ -446,7 +454,7 @@ export default function ColonView({ data, hideExport = false, title }: ColonView
                     }}
                     onDragEnd={() => { setDragKey(null); setDragOverKey(null) }}
                     className={`px-3 py-2 text-left text-xs font-semibold text-slate-300 border-r border-slate-700 last:border-r-0 relative group select-none transition ${dragKey === key ? 'opacity-50' : ''} ${dragOverKey === key ? 'ring-2 ring-blue-400' : ''}`}
-                    style={{ width: columnWidths[key] ?? 140, minWidth: 50 }}
+                    style={{ width: columnWidths[key] ?? 140, minWidth: 80 }}
                   >
                     <div className="flex items-center gap-1">
                       <span className="truncate">{key}</span>
@@ -484,7 +492,7 @@ export default function ColonView({ data, hideExport = false, title }: ColonView
                         const startX = e.clientX
                         const startW = columnWidths[key] ?? 140
                         const onMove = (ev: MouseEvent) =>
-                          setColumnWidths(p => ({ ...p, [key]: Math.max(50, startW + ev.clientX - startX) }))
+                          setColumnWidths(p => ({ ...p, [key]: Math.max(80, startW + ev.clientX - startX) }))
                         const onUp = () => {
                           window.removeEventListener('mousemove', onMove)
                           window.removeEventListener('mouseup', onUp)
@@ -516,7 +524,7 @@ export default function ColonView({ data, hideExport = false, title }: ColonView
                         return (
                           <td
                             key={cellId}
-                            className="px-3 py-2 text-xs font-mono border-r border-slate-700 last:border-r-0 break-words max-w-xs"
+                            className="px-3 py-2 text-xs font-mono border-r border-slate-700 last:border-r-0 break-words overflow-hidden text-ellipsis"
                           >
                             {isNested(value) ? (
                               <button

@@ -207,7 +207,7 @@ export default function DataTable({ rows }: Props) {
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-4">
         <table className="json-table">
           <thead>
             {table.getHeaderGroups().map(hg => (
